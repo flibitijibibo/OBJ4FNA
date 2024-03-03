@@ -1,0 +1,32 @@
+This is OBJ4FNA, a Wavefront OBJ parser and container for use with FNA games.
+
+Project Website: https://github.com/flibitijibibo/OBJ4FNA/
+
+License
+-------
+OBJ4FNA is released under the zlib license. See LICENSE for details.
+
+About OBJ4FNA
+-------------
+OBJ4FNA was written for a currently unannounced project by Ethan Lee. The artist
+exports models from Blender, generating OBJ files for geometry and PNG files for
+the models' UV materials.
+
+This is not meant to be a comprehensive OBJ parser; it is mostly meant for
+static models with no animations.
+
+Notes for Artists
+-----------------
+When exporting to OBJ, be sure to select "Triangulated Mesh"! OBJ4FNA only
+supports triangle meshes, so quads and other polygon types will not work.
+
+Dependencies
+------------
+OBJ4FNA depends on FNA's SetDataPointerEXT extension. The example code also
+depends on FNA's IsRelativeMouseModeEXT extension.
+
+Found an issue?
+---------------
+Issues and patches can be reported via GitHub:
+
+https://github.com/flibitijibibo/OBJ4FNA/issues
