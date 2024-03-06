@@ -27,6 +27,8 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Graphics;
+using ImGuiNET;
+using ImGuiNET.SampleProgram.XNA;
 
 class Example : Game
 {
@@ -37,10 +39,17 @@ class Example : Game
 	float distance;
 	int currentWheel;
 
+	bool editorEnabled;
+	ImGuiRenderer imGuiRenderer;
+	KeyboardState kbdPrev;
+
 	Example() : base()
 	{
-		new GraphicsDeviceManager(this);
+		GraphicsDeviceManager gdm = new GraphicsDeviceManager(this);
+		gdm.PreferredBackBufferWidth = 1280;
+		gdm.PreferredBackBufferHeight = 720;
 		IsMouseVisible = true;
+		Window.AllowUserResizing = true;
 	}
 
 	protected override void LoadContent()
@@ -49,9 +58,15 @@ class Example : Game
 
 		fixedFunction = new BasicEffect(GraphicsDevice);
 		fixedFunction.TextureEnabled = true;
+		fixedFunction.DiffuseColor = Vector3.One;
+		fixedFunction.SpecularPower = 1.0f;
+		fixedFunction.Alpha = 1.0f;
 
 		distance = 2.0f;
 		currentWheel = Mouse.GetState().ScrollWheelValue;
+
+		imGuiRenderer = new ImGuiRenderer(this);
+		imGuiRenderer.RebuildFontAtlas();
 
 		base.LoadContent();
 	}
@@ -82,10 +97,6 @@ class Example : Game
 
 		fixedFunction.Texture = sampleModel.Texture;
 
-		// TODO: Lighting example
-		fixedFunction.LightingEnabled = false;
-		fixedFunction.DiffuseColor = Vector3.One;
-
 		// FIXME: The Y axis feels funny, but I can't into math
 		fixedFunction.World = (
 			Matrix.CreateTranslation(0.0f, -(sampleModel.Height / 2.0f), 0.0f) *
@@ -114,11 +125,32 @@ class Example : Game
 			);
 		}
 
+		if (editorEnabled)
+		{
+			imGuiRenderer.BeforeLayout(gameTime);
+			DrawEditor();
+			imGuiRenderer.AfterLayout();
+		}
+
 		base.Draw(gameTime);
 	}
 
 	protected override void Update(GameTime gameTime)
 	{
+		KeyboardState kbd = Keyboard.GetState();
+		if (kbd.IsKeyDown(Keys.OemTilde) && !kbdPrev.IsKeyDown(Keys.OemTilde))
+		{
+			editorEnabled = !editorEnabled;
+		}
+		kbdPrev = kbd;
+
+		if (editorEnabled)
+		{
+			Mouse.IsRelativeMouseModeEXT = false;
+			base.Update(gameTime);
+			return;
+		}
+
 		MouseState state = Mouse.GetState();
 		if (Mouse.IsRelativeMouseModeEXT)
 		{
@@ -138,6 +170,183 @@ class Example : Game
 		Mouse.IsRelativeMouseModeEXT = state.LeftButton == ButtonState.Pressed;
 
 		base.Update(gameTime);
+	}
+
+	bool enableTexturing = true;
+	bool enableLighting;
+	bool perPixelLighting;
+	System.Numerics.Vector3 diffuseColor = System.Numerics.Vector3.One;
+	System.Numerics.Vector3 emissiveColor;
+	System.Numerics.Vector3 specularColor;
+	float specularPower = 1.0f;
+	float materialAlpha = 1.0f;
+	System.Numerics.Vector3 ambientLightColor;
+	int currentLight;
+	bool enabled0 = true, enabled1, enabled2;
+	System.Numerics.Vector3 direction0, direction1, direction2;
+	System.Numerics.Vector3 diffuseColor0, diffuseColor1, diffuseColor2;
+	System.Numerics.Vector3 specularColor0, specularColor1, specularColor2;
+
+	void DrawEditor()
+	{
+		ImGui.SetNextWindowPos(
+			new System.Numerics.Vector2(815, 80),
+			ImGuiCond.FirstUseEver
+		);
+		ImGui.SetNextWindowSize(
+			new System.Numerics.Vector2(440, 460),
+			ImGuiCond.FirstUseEver
+		);
+		if (ImGui.Begin("BasicEffect Editor"))
+		{
+			ImGui.Text("Debug Options:");
+			if (ImGui.Checkbox("Enable texturing", ref enableTexturing))
+			{
+				fixedFunction.TextureEnabled = enableTexturing;
+			}
+			if (ImGui.Checkbox("Enable lighting", ref enableLighting))
+			{
+				fixedFunction.LightingEnabled = enableLighting;
+			}
+			if (ImGui.Checkbox("Per-pixel lighting", ref perPixelLighting))
+			{
+				fixedFunction.PreferPerPixelLighting = perPixelLighting;
+			}
+;
+			ImGui.Separator();
+
+			ImGui.Text("Material Options:");
+			if (ImGui.ColorEdit3("Diffuse", ref diffuseColor))
+			{
+				fixedFunction.DiffuseColor = new Vector3(
+					diffuseColor.X,
+					diffuseColor.Y,
+					diffuseColor.Z
+				);
+			}
+			if (ImGui.ColorEdit3("Emissive", ref emissiveColor))
+			{
+				fixedFunction.EmissiveColor = new Vector3(
+					emissiveColor.X,
+					emissiveColor.Y,
+					emissiveColor.Z
+				);
+			}
+			if (ImGui.ColorEdit3("Specular", ref specularColor))
+			{
+				fixedFunction.SpecularColor = new Vector3(
+					specularColor.X,
+					specularColor.Y,
+					specularColor.Z
+				);
+			}
+			if (ImGui.SliderFloat("Specular Power", ref specularPower, 0.0f, 1.0f))
+			{
+				fixedFunction.SpecularPower = specularPower;
+			}
+			if (ImGui.SliderFloat("Alpha", ref materialAlpha, 0.0f, 1.0f))
+			{
+				fixedFunction.Alpha = materialAlpha;
+			}
+
+			ImGui.Separator();
+
+			ImGui.Text("Light Options:");
+			if (ImGui.ColorEdit3("Ambient Light Color", ref ambientLightColor))
+			{
+				fixedFunction.AmbientLightColor = new Vector3(
+					ambientLightColor.X,
+					ambientLightColor.Y,
+					ambientLightColor.Z
+				);
+			}
+			if (ImGui.RadioButton("Directional Light 1", currentLight == 0))
+			{
+				currentLight = 0;
+			}
+			if (ImGui.RadioButton("Directional Light 2", currentLight == 1))
+			{
+				currentLight = 1;
+			}
+			if (ImGui.RadioButton("Directional Light 3", currentLight == 2))
+			{
+				currentLight = 2;
+			}
+			if (currentLight == 0)
+			{
+				DirectionalLightEditor(
+					fixedFunction.DirectionalLight0,
+					ref enabled0,
+					ref direction0,
+					ref diffuseColor0,
+					ref specularColor0
+				);
+			}
+			else if (currentLight == 1)
+			{
+				DirectionalLightEditor(
+					fixedFunction.DirectionalLight1,
+					ref enabled1,
+					ref direction1,
+					ref diffuseColor1,
+					ref specularColor1
+				);
+			}
+			else if (currentLight == 2)
+			{
+				DirectionalLightEditor(
+					fixedFunction.DirectionalLight2,
+					ref enabled2,
+					ref direction2,
+					ref diffuseColor2,
+					ref specularColor2
+				);
+			}
+
+			ImGui.End();
+		}
+	}
+
+	void DirectionalLightEditor(
+		DirectionalLight light,
+		ref bool enabled,
+		ref System.Numerics.Vector3 direction,
+		ref System.Numerics.Vector3 diffuse,
+		ref System.Numerics.Vector3 specular
+	) {
+		if (ImGui.Checkbox("Enabled", ref enabled))
+		{
+			light.Enabled = enabled;
+		}
+		if (ImGui.SliderFloat3("Direction", ref direction, -1, 1))
+		{
+			if (direction.X != 0 || direction.Y != 0 || direction.Z != 0)
+			{
+				Vector3 dir = new Vector3(
+					direction.X,
+					direction.Y,
+					direction.Z
+				);
+				dir.Normalize();
+				light.Direction = dir;
+			}
+		}
+		if (ImGui.ColorEdit3("Diffuse Color", ref diffuse))
+		{
+			light.DiffuseColor = new Vector3(
+				diffuse.X,
+				diffuse.Y,
+				diffuse.Z
+			);
+		}
+		if (ImGui.ColorEdit3("Specular Color", ref specular))
+		{
+			light.SpecularColor = new Vector3(
+				specular.X,
+				specular.Y,
+				specular.Z
+			);
+		}
 	}
 
 	static void Main(string[] args)
